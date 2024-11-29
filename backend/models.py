@@ -21,6 +21,8 @@ class User(db.Model, UserMixin):
     active = db.Column(db.Boolean, default=True)
     confirmed_at = db.Column(db.DateTime)
     roles = db.relationship('Role', secondary='user_roles', backref='bearers')
+    customer = db.relationship('CustomerProfile', back_populates='user', uselist=False)
+
 
     def to_dict(self):
         return {
@@ -52,6 +54,8 @@ class CustomerProfile(db.Model):
     blocked = db.Column(db.Boolean, default=False)
     preferred_services = db.Column(db.Text)
 
+    user = db.relationship('User', backref='customers', lazy=True)
+        
     def to_dict(self):
         return {
             "id": self.id,
@@ -85,6 +89,8 @@ class Professional(db.Model):
         return None
 
     def to_dict(self):
+        completed_requests = ServiceRequest.query.filter_by(professional_id=self.user_id, service_status="Closed").all()
+        remarks = [request.remarks for request in completed_requests if request.remarks]
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -94,6 +100,7 @@ class Professional(db.Model):
             "verified": self.verified,
             "blocked": self.blocked,
             "average_rating": self.average_rating,
+            "remarks": remarks,  # Adding remarks
         }
 
 

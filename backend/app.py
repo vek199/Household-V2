@@ -11,6 +11,10 @@ from management.customers_blueprint import customers_bp
 from management.professionals_blueprint import professionals_bp
 from management.customer_servicehistory_bp import service_request_hist_bp
 from management.services_pros_bp import service_pros_details_bp
+from management.professional_dashboard_bp import professional_dashboard_bluep
+from management.submit_review import review_bp
+from management.admin_search_bp import admin_bp
+
 def create_app():
     app = Flask(__name__, template_folder='frontend', static_folder='frontend',static_url_path='/static')
     app.config.from_object(LocalDevelopmentConfig)
@@ -37,6 +41,9 @@ app.register_blueprint(professionals_bp)
 
 app.register_blueprint(service_request_hist_bp, url_prefix='/api')
 app.register_blueprint(service_pros_details_bp, url_prefix='/api')
+app.register_blueprint(professional_dashboard_bluep)
+app.register_blueprint(review_bp, url_prefix='/api')
+app.register_blueprint(admin_bp)
 
 import create_initial_data
 import routes

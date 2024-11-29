@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import db, ServiceRequest, User, Service, Review
+from models import db, ServiceRequest, User, Service, Review, Professional
 from flask_restful import Api, Resource, reqparse
 from datetime import datetime
 
@@ -27,14 +27,16 @@ class ServiceRequestResource(Resource):
         parser.add_argument('professional_id', type=int, required=True, help="Professional ID is required")
         parser.add_argument('service_status', type=str, required=True, help="Service status is required")
         parser.add_argument('remarks', type=str, required=False, help="Remarks")
-
         args = parser.parse_args()
-
+        professional = args['professional_id']
+        professional = Professional.query.get_or_404(professional)
+        professional_id = professional.user.id
+        print(professional_id)
         # Create a new service request
         new_request = ServiceRequest(
             service_id=args['service_id'],
             customer_id=args['customer_id'],
-            professional_id=args['professional_id'],
+            professional_id=professional_id,
             service_status=args['service_status'],
             remarks=args.get('remarks', ''),
         )
@@ -56,6 +58,18 @@ class ServiceRequestResource(Resource):
         professional_reviews = [review for review in reviews if review.reviewer_id == self.get_professional_id_for_service_request(service_request_id)]
         if professional_reviews:
             return sum([review.rating for review in professional_reviews]) / len(professional_reviews)
+        return None
+    def get_customer_id_for_service_request(self, service_request_id):
+        # Assuming you have a ServiceRequest model
+        service_request = ServiceRequest.query.filter_by(id=service_request_id).first()
+        if service_request:
+            return service_request.customer_id
+        return None
+    def get_professional_id_for_service_request(self, service_request_id):
+        # Assuming you have a ServiceRequest model
+        service_request = ServiceRequest.query.filter_by(id=service_request_id).first()
+        if service_request:
+            return service_request.professional_id
         return None
 
 api.add_resource(ServiceRequestResource, '/service_request')

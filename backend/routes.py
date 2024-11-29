@@ -1,6 +1,6 @@
 from flask import current_app as app, jsonify, render_template, request
 from flask_security import auth_required, verify_password
-from flask_jwt_extended import JWTManager, jwt_required, get_jwt
+from flask_jwt_extended import JWTManager, get_jwt_identity, jwt_required, get_jwt
 from flask_restful import Api, Resource, reqparse
 from models import *
 import uuid
@@ -64,6 +64,12 @@ def check_if_token_is_revoked(jwt_header, jwt_payload):
     jti = jwt_payload["jti"]
     return jti in revoked_tokens
 
+@app.route('/api/auth/current_user', methods=['GET'])
+@jwt_required()  # or other authentication method
+def get_current_user():
+    current_user = get_jwt_identity()  # Fetch user from JWT identity
+    user = User.query.get(current_user)  # Get user from DB
+    return jsonify(user.to_dict())
 
 # API Resources for registration and management
 class CustomerRegister(Resource):
@@ -214,6 +220,61 @@ class ProfessionalRejection(Resource):
         db.session.commit()
         return jsonify({"message": "Professional rejected"}), 200
 
+@app.route('/api/customer/<int:id>', methods=['GET'])
+def get_customer_details(id):
+    customer = CustomerProfile.query.options(joinedload(CustomerProfile.user)).filter_by(id=id).first()
+    if not customer:
+        return {"error": "Customer not found"}, 404
+
+    profile_picture_url = f"https://api.generated.photos/api/v1/faces?api_key=YOUR_API_KEY&limit=1"  # Add actual profile pic API if needed.
+    data = customer.to_dict()
+    data["profile_picture"] = profile_picture_url
+    data["user"] = customer.user.to_dict()
+    return data
+
+@app.route('/api/professional/<int:id>', methods=['GET'])
+def get_professional_details(id):
+    professional = Professional.query.options(joinedload(Professional.user)).filter_by(id=id).first()
+    if not professional:
+        return {"error": "Professional not found"}, 404
+
+    profile_picture_url = f"https://api.generated.photos/api/v1/faces?api_key=YOUR_API_KEY&limit=1"
+    data = professional.to_dict()
+    data["profile_picture"] = profile_picture_url
+    data["user"] = professional.user.to_dict()
+    return data
+
+@app.route('/api/customer_ratings', methods=['GET'])
+def get_customer_ratings():
+    # Calculate the overall average rating for customer satisfaction
+    overall_avg_rating = db.session.query(
+        db.func.avg(Review.rating).label('overall_avg_rating')
+    ).scalar()  # `scalar()` fetches the single aggregated value
+    
+    # Return a JSON response with the overall rating
+    return jsonify({'overall_customer_satisfaction': float(overall_avg_rating) if overall_avg_rating else 0.0})
+
+
+@app.route('/api/professional_ratings', methods=['GET'])
+def get_professional_ratings():
+    data = db.session.query(
+        Professional.id,
+        User.username,
+        db.func.avg(Review.rating).label('avg_rating')
+    ).join(User, Professional.user_id == User.id).join(
+        Review, Review.reviewee_id == User.id
+    ).group_by(Professional.id).all()
+    print('DATA:',data)
+    return jsonify({user: float(avg_rating) for _, user, avg_rating in data})
+
+@app.route('/api/service_requests_summary', methods=['GET'])
+def get_service_requests_summary():
+    data = db.session.query(
+        ServiceRequest.service_status,
+        db.func.count(ServiceRequest.id).label('count')
+    ).group_by(ServiceRequest.service_status).all()
+    
+    return jsonify({status: count for status, count in data})
 
 
 # Add the Resources to the API
