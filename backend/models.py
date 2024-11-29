@@ -22,6 +22,7 @@ class User(db.Model, UserMixin):
     confirmed_at = db.Column(db.DateTime)
     roles = db.relationship('Role', secondary='user_roles', backref='bearers')
     customer = db.relationship('CustomerProfile', back_populates='user', uselist=False)
+    
 
 
     def to_dict(self):
@@ -121,7 +122,6 @@ class Service(db.Model):
             "description": self.description,
         }
 
-
 class ServiceRequest(db.Model):
     __tablename__ = 'service_request'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -135,7 +135,8 @@ class ServiceRequest(db.Model):
 
     # Relationships
     service = db.relationship('Service', backref='requests')
-    professional = db.relationship('User', foreign_keys=[professional_id])  # Add this line
+    customer = db.relationship('User', foreign_keys=[customer_id], backref='customer_requests')  # Renamed to 'customer'
+    professional = db.relationship('User', foreign_keys=[professional_id], backref='professional_requests')  # Explicit 'professional'
     reviews = db.relationship('Review', back_populates='service_request', lazy=True)
 
     def to_dict(self):
@@ -146,12 +147,12 @@ class ServiceRequest(db.Model):
             "service_id": self.service_id,
             "customer_id": self.customer_id,
             "professional_id": self.professional_id,
-            "professional_name": self.professional.username, 
-            "pro_phone_no" : self.professional.phone_number,
-            "date_of_request": self.date_of_request,
+            "professional_name": self.professional.username if self.professional else None,  # Added check for None
+            "pro_phone_no": self.professional.phone_number if self.professional else None,  # Added check for None
+            "date_of_request": format_datetime(self.date_of_request),
             "service_status": self.service_status,
             "remarks": self.remarks,
-            "date_closed": self.date_closed,
+            "date_closed": format_datetime(self.date_closed),
         }
 
 
