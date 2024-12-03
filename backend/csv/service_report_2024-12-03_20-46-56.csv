@@ -1,0 +1,84 @@
+Users
+ID,Username,Phone Number,Email,Active,Roles
+1,admin,,admin@example.com,True,admin
+2,vek,1234567890,customer1@example.com,True,customer
+3,cus2,9876543210,customer2@example.com,True,customer
+4,pro1,5555555555,pro1@example.com,True,professional
+5,pro2,6666666666,pro2@example.com,True,professional
+6,ajay1,8784568795,ajay1@gmail.com,True,customer
+7,veka,9789456688,veka@gmail.com,True,customer
+8,ajay,9487567894,ajay@gmail.com,True,customer
+9,user10,7889945621,user10@gmail.com,True,customer
+10,user11,9874564568,user11@gmail.com,True,customer
+11,pro11,1234567890,pro11@gmail.com,True,professional
+12,pro111,1234567790,pro111@gmail.com,True,professional
+13,pro1222,1234567777,pro122@gmail.com,True,professional
+14,pro12221,1234567777,pro1221@gmail.com,True,professional
+15,kitcle,1234567845,kitcle@gmail.com,True,professional
+16,Prakash,7894561235,prakash@gmail.com,True,professional
+17,suresh,7894561235,suresh@gmail.com,True,customer
+Roles
+ID,Name,Description
+1,admin,Super User
+2,customer,customer
+3,professional,Service professional
+CustomerProfiles
+ID,User ID,Address,Location Pin Code,Blocked,Preferred Services
+1,2,123 Customer St,123456,False,Plumbing
+2,3,456 Client Ave,654321,False,Cleaning
+3,7,coimbatore,641049,False,cleaning
+4,8,coimbatore,641888,False,Gardening
+5,9,Coimbatore,694165,False,Cleaning
+6,10,user10,654123,False,Cleaning
+7,10,user11,111111,False,user11
+8,17,Chennai,630002,False,Gardening
+Professionals
+ID,User ID,Service Type,Experience,Description,Verified,Blocked,Average Rating
+1,4,Plumbing,5,Expert in plumbing,True,False,3.75
+2,5,Cleaning,3,Experienced cleaner,True,False,3.0
+4,12,3,8,Pro11 Expert Kitchen Cleaner,True,False,
+5,13,2,8,pro122,True,False,
+6,14,2,8,pro122,True,False,
+7,15,Kitchen Cleaning,8,kitcle,True,False,4.0
+8,16,Cleaning,5,Expert Kitchen cleaner,True,False,5.0
+Services
+ID,Name,Price,Time Required,Description
+1,Plumbing,100.00,2,All types of plumbing services 
+2,Cleaning,50.00,1,Residential and commercial cleaning services
+3,Kitchen Cleaning,100.00,60,Full Kitchen Cleaning And Reorganinzing
+4,Bathroom Deep Clean,300.00,60,Perfect for when moving into your new house!
+ServiceRequests
+ID,Service ID,Customer ID,Professional ID,Date of Request,Service Status,Remarks,Date Closed
+1,1,2,4,2024-11-29 12:16:56.906931,closed,,
+3,1,2,4,2024-11-29 12:17:05.852508,closed,,
+4,2,2,5,2024-11-29 12:17:17.799596,closed,,
+5,2,2,5,2024-11-29 12:17:22.220558,cancelled,,
+6,1,2,4,2024-11-29 12:26:02.707251,closed,,
+7,1,2,4,2024-11-29 12:44:13.772343,closed,,2024-11-29 12:45:13
+8,1,2,4,2024-12-03 05:08:50.384322,closed,,2024-12-03 05:09:59
+9,1,2,4,2024-12-03 05:08:56.448518,assigned,,
+10,1,2,4,2024-12-03 05:09:02.124856,cancelled,,
+11,1,8,4,2024-12-03 12:55:54.843611,requested,,
+12,1,8,4,2024-12-03 12:56:13.426436,cancelled,,
+13,1,8,4,2024-12-03 12:56:39.668413,cancelled,,
+14,2,8,5,2024-12-03 13:02:56.316768,requested,,
+15,1,3,4,2024-12-03 14:10:52.804865,requested,,
+16,3,7,15,2024-12-03 14:23:03.940324,cancelled,,
+17,3,7,15,2024-12-03 14:30:16.629700,cancelled,,
+18,3,7,15,2024-12-03 14:34:23.652160,closed,,2024-12-03 14:35:58
+19,3,7,15,2024-12-03 14:35:05.577594,requested,,
+20,2,17,16,2024-12-03 15:08:02.261101,cancelled,,
+21,2,17,16,2024-12-03 15:08:07.477141,closed,,2024-12-03 15:09:56
+22,2,17,16,2024-12-03 15:08:10.397479,requested,,
+23,2,17,5,2024-12-03 15:08:13.240659,requested,,
+Reviews
+ID,Service Request ID,Reviewer ID,Reviewee ID,Rating,Review,Timestamp
+1,1,2,4,4,Good,2024-11-29 12:18:34.754968
+2,3,2,4,2,Good,2024-11-29 12:20:16.352312
+3,6,2,4,5,Worst,2024-11-29 12:26:39.690666
+4,7,2,5,3,good,2024-11-29 12:45:13.150574
+5,8,2,4,4,Test,2024-12-03 05:09:59.418671
+6,18,7,15,4,pretty Good and quick work,2024-12-03 14:35:58.669116
+7,21,17,16,5,Pretty Good and fast work,2024-12-03 15:09:56.484490
+Blocks
+ID,Blocked User ID

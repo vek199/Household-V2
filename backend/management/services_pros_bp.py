@@ -3,7 +3,7 @@ from models import db, Service, Professional, User
 
 service_pros_details_bp = Blueprint('service_pros_details', __name__)
 
-@service_pros_details_bp.route('/service/<int:service_id>', methods=['GET'])
+@service_pros_details_bp.route('/service/pro/<int:service_id>', methods=['GET'])
 def get_service_and_professionals(service_id):
     service = Service.query.get(service_id)
     if not service:

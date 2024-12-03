@@ -7,15 +7,29 @@ services_bp = Blueprint('services', __name__)
 api = Api(services_bp)
 
 class ServiceResource(Resource):
-    def get(self):
-        services = Service.query.all()
-        return jsonify([{
-            'id': service.id,
-            'name': service.name,
-            'price': float(service.price),
-            'time_required': service.time_required,
-            'description': service.description,
-        } for service in services])
+    def get(self, service_id=None):
+        if service_id:
+            # Fetch a specific service by ID
+            service = Service.query.get(service_id)
+            if not service:
+                return {"message": "Service not found"}, 404
+            return jsonify({
+                'id': service.id,
+                'name': service.name,
+                'price': float(service.price),
+                'time_required': service.time_required,
+                'description': service.description,
+            })
+        else:
+            # Fetch all services
+            services = Service.query.all()
+            return jsonify([{
+                'id': service.id,
+                'name': service.name,
+                'price': float(service.price),
+                'time_required': service.time_required,
+                'description': service.description,
+            } for service in services])
     
     def post(self):
         parser = reqparse.RequestParser()
@@ -41,9 +55,8 @@ class ServiceResource(Resource):
         
         return {"message": "Service Created Successfully"}, 201
     
-    def put(self):
+    def put(self, service_id):
         parser = reqparse.RequestParser()
-        parser.add_argument('id', type=int, required=True, help='Service id is required')
         parser.add_argument('name', type=str, required=False)
         parser.add_argument('price', type=float, required=False)
         parser.add_argument('time_required', type=int, required=False)
@@ -51,7 +64,7 @@ class ServiceResource(Resource):
 
         args = parser.parse_args()
         
-        service = Service.query.get(args['id'])
+        service = Service.query.get(service_id)
         
         if not service:
             return {"message": "Service not found"}, 404
@@ -69,13 +82,8 @@ class ServiceResource(Resource):
         
         return {"message": "Service updated successfully"}, 200
     
-    def delete(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('id', type=int, required=True, help='Service id is required')
-        
-        args = parser.parse_args()
-        
-        service = Service.query.get(args['id'])
+    def delete(self, service_id):
+        service = Service.query.get(service_id)
         
         if not service:
             return {"message": "Service not found"}, 404
@@ -85,4 +93,5 @@ class ServiceResource(Resource):
         
         return {"message": "Service deleted successfully"}, 200
 
-api.add_resource(ServiceResource, '/service')
+# Register the resources with correct URL patterns
+api.add_resource(ServiceResource, '/service', '/service/<int:service_id>')

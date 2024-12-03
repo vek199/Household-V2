@@ -21,7 +21,7 @@ class User(db.Model, UserMixin):
     active = db.Column(db.Boolean, default=True)
     confirmed_at = db.Column(db.DateTime)
     roles = db.relationship('Role', secondary='user_roles', backref='bearers')
-    customer = db.relationship('CustomerProfile', back_populates='user', uselist=False)
+    customer = db.relationship('CustomerProfile', back_populates='user', uselist=False,  overlaps="customers")
     
 
 
@@ -49,13 +49,13 @@ class UserRoles(db.Model):
 class CustomerProfile(db.Model):
     __tablename__ = 'customer_profile'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     address = db.Column(db.Text)
     location_pin_code = db.Column(db.String(10))
     blocked = db.Column(db.Boolean, default=False)
     preferred_services = db.Column(db.Text)
 
-    user = db.relationship('User', backref='customers', lazy=True)
+    user = db.relationship('User', backref='customers', lazy=True, overlaps="customers")
         
     def to_dict(self):
         return {
@@ -70,7 +70,7 @@ class CustomerProfile(db.Model):
 class Professional(db.Model):
     __tablename__ = 'professional'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     service_type = db.Column(db.String(100), nullable=False)
     experience = db.Column(db.Integer)
     description = db.Column(db.Text)

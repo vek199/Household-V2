@@ -1,30 +1,35 @@
-from flask import current_app as app, jsonify, render_template, request
+from flask import current_app as capp, jsonify, render_template, request
 from flask_security import auth_required, verify_password
 from flask_jwt_extended import JWTManager, get_jwt_identity, jwt_required, get_jwt
 from flask_restful import Api, Resource, reqparse
+from sqlalchemy.exc import IntegrityError
+
+# from flask_caching import Cache
+# from app import cache
 from models import *
 import uuid
 import os
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
-datastore = app.security.datastore
-jwt = JWTManager(app)
-api = Api(app)
+
+datastore = capp.security.datastore
+jwt = JWTManager(capp)
+api = Api(capp)
 
 # Store revoked tokens (in-memory for simplicity, can be a database)
 revoked_tokens = set()
 
-@app.route('/')
+@capp.route('/')
 def home():
     return render_template('index.html')
 
-@app.get('/protected')
+@capp.get('/protected')
 @auth_required('token')
 def protected():
     return '<h1> only accessible by auth user </h1>'
 
-@app.route('/login', methods=['POST'])
+@capp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
     username = data.get('username')
@@ -45,7 +50,7 @@ def login():
 
 
 # Token revocation for logout
-@app.route('/logout', methods=['POST'])
+@capp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
     auth_header = request.headers.get('Authorization')
@@ -64,8 +69,8 @@ def check_if_token_is_revoked(jwt_header, jwt_payload):
     jti = jwt_payload["jti"]
     return jti in revoked_tokens
 
-@app.route('/api/auth/current_user', methods=['GET'])
-@jwt_required()  # or other authentication method
+@capp.route('/api/auth/current_user', methods=['GET'])
+# @cache.cached(timeout=3)
 def get_current_user():
     current_user = get_jwt_identity()  # Fetch user from JWT identity
     user = User.query.get(current_user)  # Get user from DB
@@ -75,7 +80,7 @@ def get_current_user():
 class CustomerRegister(Resource):
     def post(self):
         data = request.get_json()
-        
+
         # Extract and validate data from the request
         username = data.get('username')
         phone_number = data.get('phone_number')
@@ -85,17 +90,17 @@ class CustomerRegister(Resource):
         address = data.get('address')
         location_pin_code = data.get('location_pin_code')
         preferred_services = data.get('preferred_services')
-        
+
         if not all([username, phone_number, email, password, confirm_password, address, location_pin_code]):
-            return jsonify({"message": "All fields are required"}), 400
-        
+            return {"message": "All fields are required"}, 400
+
         if password != confirm_password:
-            return jsonify({"message": "Passwords do not match"}), 400
-        
+            return {"message": "Passwords do not match"}, 400
+
         # Check if the user already exists
         existing_user = datastore.find_user(email=email)
         if existing_user:
-            return jsonify({"message": "Email already registered"}), 400
+            return {"message": "Email already registered"}, 400
 
         # Create the new user
         try:
@@ -106,6 +111,7 @@ class CustomerRegister(Resource):
                 password=password,
                 roles=['customer']  # Assign customer role
             )
+            db.session.commit()
 
             # Create customer profile
             customer_profile = CustomerProfile(
@@ -117,18 +123,23 @@ class CustomerRegister(Resource):
             db.session.add(customer_profile)
             db.session.commit()
 
-            return jsonify({"message": "Customer registration successful"}), 201
+            return {"message": "Customer registration successful"}, 201
+        except IntegrityError:
+            db.session.rollback()
+            return {"message": "An error occurred with the database. Ensure data is unique and valid."}, 500
         except Exception as e:
             db.session.rollback()
-            return jsonify({"message": f"Registration failed: {str(e)}"}), 500
-
+            return {"message": f"Registration failed: {str(e)}"}, 500
+        
+capp.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')  # Set to a folder named 'uploads' in the current working directory
 
 class ProfessionalRegister(Resource):
     def post(self):
+        # Extract data from form (multipart/form-data)
         data = request.form.to_dict()
         file = request.files.get('experience_proof')
 
-        # Extract and validate data from the request
+        # Extract and validate fields
         username = data.get('username')
         phone_number = data.get('phone_number')
         email = data.get('email')
@@ -138,51 +149,59 @@ class ProfessionalRegister(Resource):
         experience = data.get('experience')
         description = data.get('description')
 
-        if not all([username, phone_number, email, password, confirm_password, service_type, experience, description]):
-            return jsonify({"message": "All fields are required"}), 400
+        if not all([username, phone_number, email, password, confirm_password, service_type, experience, description, file]):
+            return {"message": "All fields are required, including experience proof."}, 400
 
         if password != confirm_password:
-            return jsonify({"message": "Passwords do not match"}), 400
+            return {"message": "Passwords do not match"}, 400
 
-        if not file or not allowed_file(file.filename):
-            return jsonify({"message": "Invalid or missing experience proof file"}), 400
-
-        # Save the file
+        # Save uploaded file
         try:
-            file_extension = file.filename.rsplit('.', 1)[1].lower()
-            sanitized_username = secure_filename(username.replace(" ", "_"))
-            unique_filename = f"{sanitized_username}_{uuid.uuid4().hex}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{file_extension}"
-            upload_folder = app.config['UPLOAD_FOLDER']
+            upload_folder = capp.config['UPLOAD_FOLDER']
             os.makedirs(upload_folder, exist_ok=True)
-            file_path = os.path.join(upload_folder, unique_filename)
+
+            # Secure and save the file
+            file_extension = file.filename.rsplit('.', 1)[1].lower()
+            secure_name = secure_filename(f"{username}_{uuid.uuid4().hex}.{file_extension}")
+            file_path = os.path.join(upload_folder, secure_name)
             file.save(file_path)
         except Exception as e:
-            return jsonify({"message": f"File upload failed: {str(e)}"}), 500
+            return {"message": f"Failed to save file: {str(e)}"}, 500
 
-        # Create the new user and professional profile
+        # Create the user and professional profile
         try:
             new_user = datastore.create_user(
                 username=username,
                 phone_number=phone_number,
                 email=email,
                 password=password,
-                roles=['professional']  # Assign professional role
+                roles=['professional']
             )
+            db.session.commit()
 
             professional_profile = Professional(
                 user_id=new_user.id,
                 service_type=service_type,
                 experience=experience,
                 description=description,
-                experience_proof=unique_filename
+                experience_proof=secure_name  # Save file name/path in DB
             )
             db.session.add(professional_profile)
             db.session.commit()
 
-            return jsonify({"message": "Professional registration successful"}), 201
+            return {"message": "Professional registration successful"}, 201
+        except IntegrityError:
+            db.session.rollback()
+            return {"message": "An error occurred with the database. Ensure data is unique and valid."}, 500
         except Exception as e:
             db.session.rollback()
-            return jsonify({"message": f"Registration failed: {str(e)}"}), 500
+            return {"message": f"Registration failed: {str(e)}"}, 500
+
+@capp.route('/api/services', methods=['GET'])
+def get_services():
+    services = Service.query.all()
+    service_list = [service.to_dict() for service in services]
+    return jsonify(service_list)
 
 class ServiceList(Resource):
     def get(self):
@@ -220,7 +239,8 @@ class ProfessionalRejection(Resource):
         db.session.commit()
         return jsonify({"message": "Professional rejected"}), 200
 
-@app.route('/api/customer/<int:id>', methods=['GET'])
+@capp.route('/api/customer/<int:id>', methods=['GET'])
+# @cache.cached(timeout=3)
 def get_customer_details(id):
     customer = CustomerProfile.query.options(joinedload(CustomerProfile.user)).filter_by(id=id).first()
     if not customer:
@@ -232,7 +252,8 @@ def get_customer_details(id):
     data["user"] = customer.user.to_dict()
     return data
 
-@app.route('/api/professional/<int:id>', methods=['GET'])
+@capp.route('/api/professional/<int:id>', methods=['GET'])
+# @cache.cached(timeout=3)
 def get_professional_details(id):
     professional = Professional.query.options(joinedload(Professional.user)).filter_by(id=id).first()
     if not professional:
@@ -244,7 +265,7 @@ def get_professional_details(id):
     data["user"] = professional.user.to_dict()
     return data
 
-@app.route('/api/customer_ratings', methods=['GET'])
+@capp.route('/api/customer_ratings', methods=['GET'])
 def get_customer_ratings():
     # Calculate the overall average rating for customer satisfaction
     overall_avg_rating = db.session.query(
@@ -255,7 +276,7 @@ def get_customer_ratings():
     return jsonify({'overall_customer_satisfaction': float(overall_avg_rating) if overall_avg_rating else 0.0})
 
 
-@app.route('/api/professional_ratings', methods=['GET'])
+@capp.route('/api/professional_ratings', methods=['GET'])
 def get_professional_ratings():
     data = db.session.query(
         Professional.id,
@@ -267,7 +288,7 @@ def get_professional_ratings():
     print('DATA:',data)
     return jsonify({user: float(avg_rating) for _, user, avg_rating in data})
 
-@app.route('/api/service_requests_summary', methods=['GET'])
+@capp.route('/api/service_requests_summary', methods=['GET'])
 def get_service_requests_summary():
     data = db.session.query(
         ServiceRequest.service_status,
@@ -277,13 +298,49 @@ def get_service_requests_summary():
     return jsonify({status: count for status, count in data})
 
 
+@capp.route('/exportcsv', methods=['POST'])
+def export_csv():
+    try:
+        # Call the Celery task to export data
+        from tasks import export_service_details_as_csv
+        task = export_service_details_as_csv.apply_async()
+        
+        return jsonify({'message': 'CSV export started successfully.', 'task_id': task.id}), 202
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+# # New Resource for Exporting Categories Details
+# class ExportResource(Resource):
+#     def post(self):
+#         try:
+#             csv_data = export_categories_details_as_csv()
+#             response = make_response(csv_data)
+#             response.headers['Content-Disposition'] = 'attachment;filename=category_report.csv'
+#             response.headers['Content-type'] = 'text/csv'
+#             return response
+#         except Exception as e:
+#             return jsonify({"error": str(e)}), 500
+        
+# api.add_resource(ExportResource, '/api/export/categories')
+
+
+@capp.route('/api/is_blocked/<int:user_id>', methods=['GET'])
+def is_user_blocked(user_id):
+    blocked_user = Block.query.filter_by(blocked_user_id=user_id).first()
+    return jsonify({"is_blocked": blocked_user is not None})
+
 # Add the Resources to the API
-api.add_resource(CustomerRegister, '/register/customer')
-api.add_resource(ProfessionalRegister, '/register/professional')
+# api.add_resource(CustomerRegister, '/register/customer')
+# api.add_resource(ProfessionalRegister, '/register/professional')
 api.add_resource(ServiceList, '/api/services')
 api.add_resource(ServiceDetail, '/api/services/<int:id>')
 api.add_resource(ProfessionalApproval, '/api/professionals/approve/<int:id>')
 api.add_resource(ProfessionalRejection, '/api/professionals/reject/<int:id>')
+api.add_resource(ProfessionalRegister, '/api/register/professional')
+api.add_resource(CustomerRegister, '/api/register/customer')
+
+
 
 # Add more routes as needed
 # You can also implement similar structure for other resources like ServiceRequests, Customers, etc.

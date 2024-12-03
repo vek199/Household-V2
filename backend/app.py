@@ -1,3 +1,4 @@
+from celery import Celery
 from flask import Flask
 from config import LocalDevelopmentConfig
 from models import *
@@ -18,9 +19,16 @@ from management.customer_search_bp import customer_bp
 from management.customer_summary import customer_sum_bp
 from management.professsional_search import professional_search_bp
 from management.professional_summary import professional_sum_bp
+
+
+import redis
+from flask_caching import Cache
+
 def create_app():
     app = Flask(__name__, template_folder='frontend', static_folder='frontend',static_url_path='/static')
     app.config.from_object(LocalDevelopmentConfig)
+    # app.config['CELERY_BROKER_URL'] = 'rediss://<USERNAME>:<PASSWORD>@<HOST>:<PORT>?ssl_cert_reqs=required'
+    # app.config['CELERY_RESULT_BACKEND'] = 'rediss://<USERNAME>:<PASSWORD>@<HOST>:<PORT>/0?ssl_cert_reqs=required'
     
     # Initialize database
     db.init_app(app)
@@ -34,7 +42,16 @@ def create_app():
     return app
 
 app = create_app()
-CORS(app)
+
+CORS(app, origins="*")
+
+redis_client = redis.Redis(host='localhost',port=6379,db=0)
+cache = Cache(app,config={'CACHE_TYPE':'redis','CACHE_REDIS':redis_client})
+
+# redis_client = redis.Redis(host='localhost', port=6379, db=1)  # Flask Cache
+# celery = Celery(__name__, broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')  # Celery
+
+
 
 app.register_blueprint(services_bp,url_prefix='/api')
 app.register_blueprint(professionals_pending_bp,url_prefix='/api')

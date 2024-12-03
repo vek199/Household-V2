@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request  # Ensure request is imported
 from flask_restful import Api, Resource
 from sqlalchemy.orm import joinedload
-from models import db, CustomerProfile, Professional, Service, ServiceRequest
+from models import db, CustomerProfile, Professional, Service, ServiceRequest,User
 
 customer_sum_bp = Blueprint('customer_sum', __name__)
 api = Api(customer_sum_bp)
@@ -23,11 +23,15 @@ def filter_results(items, search_query, fields):
     return results
 class ServiceRequestStatusAPI(Resource):
     def get(self):
-        
-        print(request)  # This should now work if 'request' is imported
+        print(request) # This should now work if 'request' is imported
         customer_id = request.args.get('user_id', type=int)
-        customer = CustomerProfile.query.get_or_404(customer_id)
-        user_id = customer.user.id
+        print('customer_id:',customer_id)
+        customer = User.query.get_or_404(customer_id)
+        print("customer: ",customer)
+        user_id = customer.id
+        print('user_id: ',user_id)
+        print('customer_id:',customer_id)
+        print(customer.username)
         print(id)
         
         # Query service requests for the specific user

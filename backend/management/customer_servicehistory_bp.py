@@ -113,3 +113,4 @@ api.add_resource(ServiceRequestHistoryResource, '/service_requests_hist/<int:cus
 api.add_resource(ServiceRequestHistoryResource, '/service_requests_hist', endpoint='add')
 api.add_resource(ServiceRequestHistoryResource, '/service_request/<int:service_request_id>/action', endpoint='cancel')
 api.add_resource(ServiceRequestHistoryResource, '/service_request/<int:service_request_id>/action', endpoint='close')
+
